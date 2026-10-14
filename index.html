@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Seharum Mawar — QR Scanner</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--pink:#d81b60;--purple:#7c4dff;--bg:#f7f0f7;--text:#18233b}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+.header{background:linear-gradient(110deg,#d81b60,#9c3de8);color:#fff;padding:18px 20px}.header h1{margin:0;font-size:21px}.header small{opacity:.9}
+.wrap{max-width:620px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 4px 15px #00000010}.card h2{font-size:18px;margin:0 0 12px}
+#reader{width:100%;max-width:520px;margin:auto;overflow:hidden;border-radius:14px}.btn{width:100%;border:0;border-radius:10px;padding:14px 16px;font-weight:bold;font-size:16px;cursor:pointer}.primary{background:linear-gradient(90deg,var(--pink),var(--purple));color:#fff}.secondary{background:#eee;color:#333}.msg{margin-top:12px;padding:12px;border-radius:12px;background:#fff7fb;border:1px solid #f3c3d7;line-height:1.4}.ok{color:#00897b;font-weight:bold}.bad{color:#d32f2f;font-weight:bold}.muted{color:#666;font-size:13px}.hidden{display:none!important}.file{margin-top:14px}.file input{width:100%;padding:10px}
+</style>
+</head>
+<body>
+<div class="header"><h1>🌷 Seharum Mawar — Live QR Scanner</h1><small>Attendance scanner</small></div>
+<div class="wrap"><div class="card">
+  <h2>📷 Arahkan kamera kepada QR peserta</h2>
+  <div id="reader"></div>
+  <div id="msg" class="msg">Memulakan kamera...</div>
+  <button id="restart" class="btn primary hidden" onclick="startCamera()">↻ Cuba Kamera Semula</button>
+  <div class="file">
+    <div class="muted">Jika kamera masih bermasalah, pilih gambar QR:</div>
+    <input id="qrfile" type="file" accept="image/*" onchange="scanFile(event)">
+  </div>
+</div></div>
+<script>
+let qr=null,locked=false;
+const params=new URLSearchParams(location.search);
+const returnUrl=params.get('return');
+
+function msg(html){document.getElementById('msg').innerHTML=html;}
+function validReturn(){return returnUrl && /^https:\/\/script\.google\.com\/macros\/s\//.test(returnUrl);}
+function goBack(){if(validReturn()) location.href=returnUrl; else location.href='about:blank';}
+function returnScan(text){
+  if(locked)return; locked=true;
+  msg('<span class="ok">✓ QR berjaya dibaca. Kembali ke Attendance...</span>');
+  try{if(qr)qr.stop().catch(()=>{});}catch(e){}
+  if(!validReturn()){
+    msg('<span class="bad">Return URL tidak sah. Buka scanner dari halaman Attendance.</span>');
+    locked=false; return;
+  }
+  location.href=returnUrl+'?scan='+encodeURIComponent(text);
+}
+function startCamera(){
+  locked=false;
+  document.getElementById('restart').classList.add('hidden');
+  msg('Memohon akses kamera...');
+  try{if(qr)qr.clear();}catch(e){}
+  qr=new Html5Qrcode('reader');
+  qr.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:250}},returnScan,()=>{})
+    .catch(async()=>{
+      try{
+        const cams=await Html5Qrcode.getCameras();
+        if(!cams.length)throw new Error('No camera');
+        qr=new Html5Qrcode('reader');
+        await qr.start(cams[0].id,{fps:10,qrbox:{width:250,height:250}},returnScan,()=>{});
+      }catch(e){
+        msg('<span class="bad">Kamera tidak dapat dibuka.</span><br><span class="muted">Pastikan halaman ini dibuka menggunakan HTTPS dan kebenaran Camera dibenarkan. Anda juga boleh pilih gambar QR di bawah.</span>');
+        document.getElementById('restart').classList.remove('hidden');
+      }
+    });
+}
+function scanFile(ev){
+  const file=ev.target.files&&ev.target.files[0]; if(!file)return;
+  if(!qr)qr=new Html5Qrcode('reader');
+  msg('Membaca gambar QR...');
+  qr.scanFile(file,true).then(returnScan).catch(()=>msg('<span class="bad">QR tidak dapat dibaca daripada gambar tersebut.</span>'));
+}
+window.addEventListener('load',()=>{
+  if(!validReturn()){msg('<span class="bad">Scanner perlu dibuka daripada halaman Attendance.</span>');return;}
+  startCamera();
+});
+</script>
+</body>
+</html>
