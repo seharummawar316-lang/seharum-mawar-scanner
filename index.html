@@ -31,7 +31,21 @@ const params=new URLSearchParams(location.search);
 const returnUrl=params.get('return');
 
 function msg(html){document.getElementById('msg').innerHTML=html;}
-function validReturn(){return returnUrl && /^https:\/\/script\.google\.com\/macros\/s\//.test(returnUrl);}
+
+function validReturn() {
+  try {
+    const u = new URL(returnUrl);
+    return (
+      u.protocol === 'https:' &&
+      u.hostname === 'script.google.com' &&
+      u.pathname.includes('/macros/') &&
+      /\/exec$/.test(u.pathname)
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 function goBack(){if(validReturn()) location.href=returnUrl; else location.href='about:blank';}
 function returnScan(text){
   if(locked)return; locked=true;
